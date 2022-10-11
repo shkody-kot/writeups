@@ -1,0 +1,30 @@
+NAME: super_otp
+CATEGORY: crypto
+POINTS: 150
+DOWNLOAD LINK: http://chal.ctf-league.osusec.org/super_otp.py
+ACCESS: nc chal.ctf-league.osusec.org 22445
+DESCRIPTION: One time pads are a way of encrypting a message in a way that cannot be cracked. 
+I have developed the Super One Time Pad to increase its security!
+Good Luck trying to find the flag!
+
+This challenge has to do with the XOR operation and one-time pads. First opening the code
+and looking at how the encryption works, I noticed that the program generates 3 random
+one-time pads and then XORs them all together to create a Super one-time pad. It then
+prints out the flag encrypted with that super_otp and base 64 for me to see. 
+
+Then the program offers three prompts for input, and encrypts each user input with one of the
+one-time pads, encrypts it into base 64, then outputs it back to the user. 
+
+Because one of the properties of XOR is
+	A ^ B = C
+	A ^ C = B
+I can use the original plaintext (A) and the outputted ciphertext (B) in order to find
+the pad (B). This process is streamlined if in lieu of actual input I pass through all
+zero bytes; then the program just outputs the one-time pads to me. 
+
+After receiving all three pads, I ran them through a base64 decoder to get them into just
+bytes. Now I have all of the parts needed to reconstruct the super_otp and decode the flag, 
+that had been very thoughtfully given to me. 
+
+I decoded the flag from base64, then XORed it with all three of the one-time pads, then 
+printed it back out to console. 
