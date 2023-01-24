@@ -1,0 +1,48 @@
+NAME: intrainspection
+CATEGORY: misc
+POINTS: 250
+DOWNLOAD LINK: http://chal.ctf-league.osusec.org/intrainspection.zip
+ACCESS: None
+DESCRIPTION: I've heard it's always important to have security on your files, 
+and if it's worth doing once, it's worth doing a lot
+
+This challenge is all zip archive themed!!
+After downloading the initial zip file, and extracting it, I looked through
+the secure.py code to try and see what might be happening in th challenge.
+
+In the secure.py file, these lines seemed the most important:
+
+os.system('zip '+fn+'.zip Nothing.docx -P '+pw)
+
+for _ in range(30):
+    fnOLD = fn
+    pw = (''.join(random.choices(charset, k=4)))
+    fn = (''.join(random.choices(charset, k=4)))
+    print(fn,pw)
+    os.system('zip '+fn+'.zip '+fnOLD+'.zip -mP '+pw)
+	
+They made 30 nested .zip files, all with a random 4-character name and a 4-character
+password, using both uppercase and lowercase letters. 
+At the very bottom of that nested mess was Nothing.docx, which as implied from 
+the demo, was another archive. 
+
+We got to cracking the .zip nest using fcrackzip, with brute force and the
+character sets of a-z and A-Z in all 4-letter combinations.
+
+	fcrackzip -b -c aA -l 4-4 -u [file]
+
+Once we finally reached the bottom, we could extract anf look at Nothing.docx.
+When looking at it in an archive manager, we saw a .xml file named BehindTheCurtain, 
+which was a little too suspiciously named, and a QR code that didn't really have
+anything useful in it. 
+
+Extracting BehindTheCurtain.xml and looking at that through an archive manager didn't
+immediately show anything interesting, but poking around in the directories got us
+another QR code: in /docs/media.
+
+Reading that QR code with the provided barcode reader gave us a hexdump that if
+you squint, you could see osu and {}, which meat it probably contained the flag;
+it lso contained ELF, implying it was an executable.
+
+Saving the hexdump into a text file, then using the "xxd -r -p hex.txt bin" command
+to turn it into a binary executable and then running it finally gave us our flag. 
