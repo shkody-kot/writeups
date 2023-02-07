@@ -1,0 +1,54 @@
+NAME: hacked
+CATEGORY: misc
+POINTS: 200
+DOWNLOAD LINK: https://drive.google.com/u/1/uc?id=1s-WlTc92lF0TDHzXGpf7l0DZrluf4DYT&export=download
+ACCESS: None
+DESCRIPTION: Jimothy came back to his computer after lunch and logged in to see some processes running he didn't open. 
+He saw a note on the desktop saying something about him being hacked. He called IT and they were able to grab a memory 
+dump of the device before they asked Jimothy to unplug the machine. Can you figure out what the attackers were doing on the machine?
+
+This challenge is rooted in Windows digital forensics, and to help us we
+downloaded the volitility tool from
+https://github.com/volatilityfoundation/volatility3
+
+First we extracted the .raw file from the provided zip archive. 
+I opened it to see what it looked like, which was a bad idea, and I had to close my
+terminal so that I could actually start doing the challenge. 
+
+First we ran a command to see all the running processes at the time of the dump, 
+to try and see if there was anything suspicious running: 
+
+	python3 ./volatility3/vol3 -f memory_dump.raw windows.pslist.PsList
+	
+This gave us a whole list of sketchy-looking Windows background processes and drivers,
+but it also had a process called mimikatz, which is a famous exploit used to get
+passwords from users. We noted down its process id (8096)
+
+We then ran a memory dump on the process itself:
+	python3 ./volatility3/vol3 -f memory_dump.raw Windows.memmap --pid 8096 --dump
+
+And then stringified it so that it could be read with people-eyes:
+	strings pid_8096.dmp | less
+
+Within that file we found a ransom note! It means we're on the right track. 
+	| en your precious company data!
+	| If you want it back, send $1,000,000 worth of Cthulhu Offerings (OFF) to the following address:
+	| miH7CvSGyutSFtQB6w3AshXaDjbuqktXUQ
+	| The flag is the ntlm hash of the user wrapped.
+	| Ex: flag{31d6cfe0d16ae931b73c59d7e0c089c0}
+	
+So we know we're looking for poor Jimothy's ntlm password hash. Thankfully, volitility
+has a function for that:
+	python3 ./volatility3/vol.py -f memory_dump.raw hashdump
+
+This got us the hashes for all the users:
+
+User    				rid    lmhash    							nthash
+
+Administrator    		500    aad3b435b51404eeaad3b435b51404ee    296788975c1ce6fafb8221f54f5aa68c
+Guest    				501    aad3b435b51404eeaad3b435b51404ee    31d6cfe0d16ae931b73c59d7e0c089c0
+DefaultAccount    		503    aad3b435b51404eeaad3b435b51404ee    31d6cfe0d16ae931b73c59d7e0c089c0
+WDAGUtilityAccount    	504    aad3b435b51404eeaad3b435b51404ee    67594cc62423c1d68acd9b5620eec6d0
+Jimothy    				1000   2d60630381393c46ac2e9b858d5427bc    80a1850fba580325595eb75c2ec50207
+
+Wrapping Jimothy's in the flag wrapper gets us the flag: osu{80a1850fba580325595eb75c2ec50207}
