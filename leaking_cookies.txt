@@ -1,0 +1,36 @@
+NAME: leaking_cookies
+CATEGORY: pwn
+POINTS: 200
+DOWNLOAD LINK: http://chal.ctf-league.osusec.org/leaking-cookies
+ACCESS: nc chal.ctf-league.osusec.org 1335
+DESCRIPTION: Stack cookies are so powerful it doesn't matter what I do, you still won't be able to break it.
+
+This was a nice lowkey challenge, and it talked about cookies (which are delicious, 
+I definitely did not once think about eating cookies during this challenge:))
+
+A stack cookie is protection against buffer overflows, by checking if the value of
+the cookie had been overwritten during execution. If the cookie is leaked, however,
+nothing is stopping us from overwriting the buffer and putting the cookie in the 
+place it expects, and then keep overwriting after that.
+
+Running the code, it very helpfully spits out a bunch of what look like memory addresses.
+
+If we look through GDB, we can see that the third address from the list is actually the 
+the cookie, and not an address at all. How helpful! We also see that we can write 24 bytes to
+the buffer before we overwrite the cookie.
+
+I also decompiled the code, and saw a win() function, so that also looks like something
+I want, so we'll keep that one in mind. Time to write the payload script. 
+
+First I grabbed the address of the win function using ELF, then used the pwntools 
+recvline to grab that handy line of bytes containing the cookie. I singled out the 
+cookie using just python's string splitting, and counting how many "words" there were. 
+The cookie ended up being the 15th "word".
+
+The final payload: A * 24 (for the buffer) + cookie + A * 8 (for the base pointer) + the win address
+		payload = b'A'*24 + p64(cookie) + b'A'*8 + p64(win)
+
+We send this off, and we are gifted with the flag!
+
+osu{c00k135_4r3_d3l1c10u5}
+
