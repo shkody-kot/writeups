@@ -1,0 +1,45 @@
+NAME: bingbong_adder
+CATEGORY: pwn
+POINTS: 250
+DOWNLOAD LINK: http://chal.ctf-league.osusec.org/bingbong_adder
+ACCESS: nc chal.ctf-league.osusec.org 1319
+DESCRIPTION: Adding bings to bongs since 1999
+
+This challenge was about exploiting string formating that printf uses (or more 
+importantly, that the script forgets to use). If a printf just sticks the user input
+in as an argument, but the input contains one of the string formatting characers
+such as %s %p %i, then printf will just start printing values off of the stack
+which is useful to us and bad for everyone else. 
+
+When we decompile the program, we see that the program uses a vulnerable printf twice, 
+but we should theoretically only need one of those. There is also a sneaky little
+win function that isn't called anywhere else.
+
+Next we run the program: it wants two numbers, then it adds them and prints the output.
+Just for funsies, let's input a lot of A's and then a bunch of %p's to see our offset for
+the buffer. Our A's show up 8th, so we have our offset!
+
+Printf has another option: %n, which saves the number of characters on the screen to the
+next location in memory. This is what we can use to overwrite a system C function in the
+GOT (Globl Offset Table) with the address of the win function, so that the next time that
+library function gets called, it actually calls win and gives us the flag.
+
+pwntools has a handy library for this exact purpose: fmtstr. We're also going to use the 
+elf library to get both the address of the win function, and of a system function (I chose
+exit)
+
+setting up our payload: 
+	win = e.symbols["win"]
+	printf = e.got['exit']
+
+	overwrite = {printf : win}
+	payload = fmtstr_payload(8, overwrite)
+
+we then make sure we've received all previous text, and then send our payload. Then we enter
+interactive mode.
+
+At first this didn't work, and we couldn't for the life of us figure out why: it turns out that
+our binary wasn't being contextualized correctly and `context.update(arch='amd64')` fixed it. 
+
+Then we got our flag: flag{f0rm47_my_b1n6b0n6_pl5}
+(I just realized this one isn't in osu{...} format, but in normal CTF flag{...} format. Cool:)
