@@ -1,0 +1,34 @@
+NAME: secure_import
+CATEGORY: misc
+POINTS: 250
+DOWNLOAD LINK: http://chal.ctf-league.osusec.org/secure_import.py
+ACCESS: nc chal.ctf-league.osusec.org 1367
+DESCRIPTION: Giving people Python REPLs is only bad since the ability to import unsafe modules is unsecure! Luckily, I patched the import mechanism and made it secure.  Here's my secure python REPL.
+
+This is a pyjail challenge, which puts the user into a sandbox environment that disallows
+them to use certain built-in modules, in this case things like open, read, os, and exec.
+That means we have to be really creative about how we go about reading the flag. 
+
+First, let's see what builtins we do have: it's nothing cool
+
+Then, let's try to climb up the hierarchy tree by chaining __class__ until we find a 
+__base__ attribute:
+	secure_import.__class__.__class__.__base__
+
+Now we can see what subclasses are present in the sandbox, even if their initial
+modules have been deleted:
+	secure_import.__class__.__class__.__base__.__subclassess__()
+
+This gives us about a billion outcomes, but one of them ought to be something we
+can work with! Time to filter. 
+Filtering for "os" didn't give us much, but filtering for "import" had some cool
+stuff:
+	list(filter(lambda x: "import" in str(x), secure_import.__class__.__class__.__base__.__subclassess__()))
+	
+Looking through all of these, we see a file loader: <class '_frozen_importlib_external.FileLoader'>
+It's got some interesting attributes, namely get_data
+
+It takes some arguments, and after some guessing we figure out what parameters to pass it:
+	list(filter(lambda x: "import" in str(x), secure_import.__class__.__class__.__base__.__subclasses__()))[-5].get_data(1, './flag')
+
+then we get the flag! osu{maybe_we_should_just_not_have_python_repl_as_a_service}
