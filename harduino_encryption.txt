@@ -1,0 +1,57 @@
+NAME: harduino_encryption
+CATEGORY: hardware
+POINTS: 300
+DOWNLOAD LINK: http://chal.ctf-league.osusec.org/harduino_encryption.zip
+ACCESS: None
+DESCRIPTION: Recently my friend told me the reason people use hardware wallets is because hackers can't understand hardware, which makes them hack-proof. They made their own shield for the Arduino Uno and encrypted a message to prove it to me. Can you help me decrypt the message and prove them wrong?
+
+This was a hardware challenge, which means that I largely had 0 idea how to even go about it.
+In the included zip file there was an Arduino .ino file, an encrypted_message.txt, and a few
+PDF diagrams of what the hardware does, what pins it sets, etc. 
+
+Looking at both the diagrams and the .ino file, the Arduino seems to be running an 
+XOR encryption of the binary data (most significant bit first) and then outputting it
+in hex. 
+
+The source code sets the "data registers" as registers 5 - 12. The diagrams then describe
+the XOR operations that the hardware performs:
+	bit 0 = bit 0 ^ bit 4
+	bit 1 = bit 1 ^ bit 5
+	bit 2 = bit 2 ^ bit 6
+	bit 3 = bit 3 ^ bit 7
+	bit 4 = bit 4 ^ 0
+	bit 5 = bit 5 ^ 1
+	bit 6 = bit 6 ^ 0
+	bit 7 = bit 7 ^ 1
+	
+Knowing this, we can implement a python script to reverse the encryption! First we read in the
+ciphertext, and get it from hex to bytes:
+	binary = bytes.fromhex("C9D4D2DCC592F7E7D29294FA92E9F5CA90E990C89497949293C8FA9296EA94FAC0D59090FA9690C5D2D59294FCDA")
+
+Then for each byte, we get the bits and reverse them, in order to get the correct order:
+	bits = list(bin(byte)[2:])
+    bits = [0] * (8 - len(bits)) + bits
+    bits = bits[::-1]
+	
+Now it's time to XOR them in the opposite order (the last half first, since it's changed after it's
+used to XOR the first half):
+	temp = [0, 0, 0, 0, 0, 0, 0, 0]
+    temp[4] = int(bits[4]) ^ 0 
+    temp[5] = int(bits[5]) ^ 1 
+    temp[6] = int(bits[6]) ^ 0 
+    temp[7] = int(bits[7]) ^ 1
+    temp[0] = int(bits[0]) ^ int(temp[4])
+    temp[1] = int(bits[1]) ^ int(temp[5]) 
+    temp[2] = int(bits[2]) ^ int(temp[6]) 
+    temp[3] = int(bits[3]) ^ int(temp[7]) 
+
+Now that we've reversed the encryption, we have to assemble the bits back into a binary number
+and cast it to an ascii character:
+	temp_bin = str(temp[0]) + str(temp[1]) + str(temp[2]) + str(temp[3]) + str(temp[4]) + str(temp[5]) + str(temp[6]) + str(temp[7])
+    temp_bin = int(temp_bin[::-1], 2)
+    print(temp_bin)
+    
+    solution += chr(temp_bin)
+
+And we've got the flag!
+	osu{c1RCu17_1MPl3M3n74710n_15N7_fr33_53cur17Y}
