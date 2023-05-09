@@ -26,7 +26,9 @@ lock button is pressed and the score is over 1000, then the server returns the f
 However, the lock is what is part of the race condition: Because the code in the 
 lock statement is inside of a setTimeout(), and has a wait period of 990 milliseconds, 
 the user only has 10 milliseconds to press the increment the score 10 times, to boost 
-it over the target value. 
+it over the target value. OR, because of the race condition, while the server is in the
+timeout, the user can spam increment commands, and by the time the timeout executes the 
+score is higher than it is "supposed to be". 
 	
 	setTimeout(() => {
 		if (currentPosition >= targetPosition) {
@@ -44,7 +46,7 @@ the user to use functions defined in the code, of which we just needed two:
 	- incrementPosition()
 	- lockPosition()
 
-We set up a long chain of incrementPosition() with a lockPosition() at the end, and 
+We set up a long chain of incrementPosition() with a lockPosition() at the beginning, and 
 just pressed enter a bunch of times until the timing lined up and we got our flag
 
 	OSU{w3bs0cket_r4c3_c0nd1t10n}
