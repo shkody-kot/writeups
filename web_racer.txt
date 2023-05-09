@@ -1,0 +1,50 @@
+NAME: web_racer
+CATEGORY: web
+POINTS: 200
+DOWNLOAD LINK: http://chal.ctf-league.osusec.org/websocketracer_server.js
+ACCESS: http://chal.ctf-league.osusec.org/websocketracer.html
+DESCRIPTION: win the race
+
+This week we had a web challenge. When we went to the access link, there was
+just a single page with three buttons and a timer at the bottom. The timer kept 
+continuously counting down from 1000 milliseconds, and the buttons were "Increment"
+"Lock" and "Reset" respectively. There is also a string that displays your score. 
+
+As the name implies, this is a race condition challenge: we have to find the race
+condition so that we can exploit it. 
+
+The server code, which was provided, shows us some crucial information:
+	- the websocket address: ws://chal.ctf-league.osusec.org:1329
+	- the target value (1000)
+	- the race condition
+
+Upon clicking the increment button, the client sends the server an Increment object
+{"action": "increment"} and increments the user's score by 100. This score resets every 1000
+milliseconds. The lock button sends the server a Lock object {"action": "lock"}. If the 
+lock button is pressed and the score is over 1000, then the server returns the flag. 
+
+However, the lock is what is part of the race condition: Because the code in the 
+lock statement is inside of a setTimeout(), and has a wait period of 990 milliseconds, 
+the user only has 10 milliseconds to press the increment the score 10 times, to boost 
+it over the target value. 
+	
+	setTimeout(() => {
+		if (currentPosition >= targetPosition) {
+			socket.send(JSON.stringify({ action: 'win', flag: secretFlag }));
+		} else {
+			socket.send(JSON.stringify({ action: 'lose' }));
+		}
+		currentPosition = 0;
+		lockFlag = false;
+	}, 990);
+
+Some other teams used sockets in order to connect to the server and send through the 
+increment and lock objects, but we just used the console in the browser. The console allows
+the user to use functions defined in the code, of which we just needed two: 
+	- incrementPosition()
+	- lockPosition()
+
+We set up a long chain of incrementPosition() with a lockPosition() at the end, and 
+just pressed enter a bunch of times until the timing lined up and we got our flag
+
+	OSU{w3bs0cket_r4c3_c0nd1t10n}
